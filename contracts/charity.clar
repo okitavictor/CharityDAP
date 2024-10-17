@@ -60,3 +60,28 @@
             (+ current-donations amount))
         (ok true)))
 
+;; Proposal Management
+(define-public (create-proposal
+    (title (string-utf8 256))
+    (description (string-utf8 1024))
+    (beneficiary principal)
+    (amount uint)
+    (duration uint))
+    (let (
+        (proposal-id (+ (var-get proposal-count) u1))
+        (current-tokens (default-to u0 (map-get? donor-tokens tx-sender)))
+    )
+        (asserts! (>= current-tokens u1) ERR-NOT-AUTHORIZED)
+        (map-set proposals proposal-id {
+            title: title,
+            description: description,
+            beneficiary: beneficiary,
+            amount: amount,
+            votes-for: u0,
+            votes-against: u0,
+            status: "active",
+            end-block: (+ block-height duration),
+            executed: false
+        })
+        (var-set proposal-count proposal-id)
+        (ok proposal-id)))
