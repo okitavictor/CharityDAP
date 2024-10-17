@@ -16,3 +16,18 @@
 (define-data-var proposal-count uint u0)
 (define-data-var governance-token-uri (string-utf8 256) "")
 
+;; Data Maps
+(define-map proposals
+    uint  ;; proposal ID
+    {
+        title: (string-utf8 256),
+        description: (string-utf8 1024),
+        beneficiary: principal,
+        amount: uint,
+        votes-for: uint,
+        votes-against: uint,
+        status: (string-utf8 20),
+        end-block: uint,
+        executed: bool
+    })
+
