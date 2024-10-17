@@ -85,3 +85,23 @@
         })
         (var-set proposal-count proposal-id)
         (ok proposal-id)))
+
+;; Voting System
+(define-public (vote (proposal-id uint) (vote-for bool))
+    (let (
+        (proposal (unwrap! (map-get? proposals proposal-id) ERR-INVALID-PROPOSAL))
+        (voter-tokens (default-to u0 (map-get? donor-tokens tx-sender)))
+    )
+        (asserts! (is-eq (get status proposal) "active") ERR-PROPOSAL-INACTIVE)
+        (asserts! (< block-height (get end-block proposal)) ERR-PROPOSAL-INACTIVE)
+        (asserts! (not (default-to false (map-get? votes {proposal-id: proposal-id, voter: tx-sender}))) ERR-ALREADY-VOTED)
+        (asserts! (> voter-tokens u0) ERR-NOT-AUTHORIZED)
+
+        (map-set votes {proposal-id: proposal-id, voter: tx-sender} true)
+        (map-set proposals proposal-id
+            (merge proposal
+                {
+                    votes-for: (if vote-for (+ (get votes-for proposal) voter-tokens) (get votes-for proposal)),
+                    votes-against: (if vote-for (get votes-against proposal) (+ (get votes-against proposal) voter-tokens))
+                }))
+        (ok true)))
