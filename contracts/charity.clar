@@ -105,3 +105,45 @@
                     votes-against: (if vote-for (get votes-against proposal) (+ (get votes-against proposal) voter-tokens))
                 }))
         (ok true)))
+
+;; Proposal Execution
+(define-public (execute-proposal (proposal-id uint))
+    (let (
+        (proposal (unwrap! (map-get? proposals proposal-id) ERR-INVALID-PROPOSAL))
+    )
+        (asserts! (>= block-height (get end-block proposal)) ERR-PROPOSAL-ACTIVE)
+        (asserts! (not (get executed proposal)) ERR-PROPOSAL-NOT-PASSED)
+        (asserts! (> (get votes-for proposal) (get votes-against proposal)) ERR-PROPOSAL-NOT-PASSED)
+
+        (try! (as-contract (stx-transfer? (get amount proposal) tx-sender (get beneficiary proposal))))
+        (map-set proposals proposal-id (merge proposal {executed: true, status: "executed"}))
+        (ok true)))
+
+;; Read-Only Functions
+(define-read-only (get-proposal (proposal-id uint))
+    (map-get? proposals proposal-id))
+
+(define-read-only (get-donor-tokens (donor principal))
+    (default-to u0 (map-get? donor-tokens donor)))
+
+(define-read-only (get-total-donations (donor principal))
+    (default-to u0 (map-get? total-donations donor)))
+
+(define-read-only (has-voted (proposal-id uint) (voter principal))
+    (default-to false (map-get? votes {proposal-id: proposal-id, voter: voter})))
+
+;; NFT Minting for Donors
+(define-public (mint-donation-nft (uri (string-utf8 256)))
+    (let (
+        (donor-donation (default-to u0 (map-get? total-donations tx-sender)))
+    )
+        (asserts! (>= donor-donation (var-get minimum-donation)) ERR-INSUFFICIENT-BALANCE)
+        (var-set governance-token-uri uri)
+        (ok true)))
+
+;; Administrative Functions
+(define-public (set-minimum-donation (new-minimum uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) ERR-NOT-AUTHORIZED)
+        (var-set minimum-donation new-minimum)
+        (ok true)))
